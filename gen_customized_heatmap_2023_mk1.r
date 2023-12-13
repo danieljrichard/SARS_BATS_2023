@@ -401,3 +401,98 @@ pdf("COMBINED_species_heatmaps_AUG2023_PROTEASES.pdf", width = 12, height = 12)
 print(PROTEASE_thresh_map)
 print(PROTEASE_thresh_map_cut)
 dev.off()
+
+
+#####################################
+#####################################
+#####################################
+#####################################
+###
+##Now working with customized GO terms
+
+
+proteases <- readLines("PROTEASE.txt")
+proteases <- unique(proteases)
+
+protease_rowset <- list()
+
+for (gene in proteases) {
+    curr_bat_dat <- lapply(1:length(bat_data_forhuman), function(x) bat_data_forhuman[[x]][bat_data_forhuman[[x]]$ORTHOFIND == gene,])
+
+    curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
+
+    ##oh gods...what about multi-mappers?
+    #...throw them out?
+    size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
+    if(length(which(size_set > 1)) != 0) {
+        print("multi-mapper")
+        next()
+    }else{
+        print("will do one-to-one")
+    }
+
+    human_expression <- lapply(curr_human_dat, function(x) x[, 2:(grep("baseMean", colnames(x))-1)])
+    bat_expression <- lapply(curr_bat_dat, function(x) x[, 2:(grep("baseMean", colnames(x))-1)])
+
+    for (x in 1:length(bat_expression)) {
+        if(dim(bat_expression[[x]])[1] == 0) {
+            fake_frame <- data.frame(t(rep(0, dim(bat_expression[[x]])[2])))
+            colnames(fake_frame) <- colnames(bat_expression[[x]])
+            bat_expression[[x]] <- fake_frame
+        }
+        curr_scale <- data.frame(t(scale(as.numeric(bat_expression[[x]][1,]))))
+        colnames(curr_scale) <- colnames(bat_expression[[x]])
+        bat_expression[[x]] <- curr_scale
+    }
+
+    for(x in 1:length(human_expression)) {
+        hum_curr_scale <- data.frame(t(scale(as.numeric(human_expression[[x]][1,]))))
+        colnames(hum_curr_scale) <- colnames(human_expression[[x]])
+        human_expression[[x]] <- hum_curr_scale
+    }
+
+    bat_row <- do.call("cbind", bat_expression)
+    human_row <- do.call("cbind", human_expression)
+
+    super_row <- cbind(human_row, bat_row)
+   # super_row2 <- as.matrix(super_row)
+   # super_row2[is.nan(super_row2)] <- 0
+   # super_row <- as.data.frame(super_row2)
+    colnames(super_row) <- unlist(lapply(colnames(super_row), function(x) meta_subset[meta_subset$simple == x, "NAME"]))
+protease_rowset[[gene]] <- super_row
+}
+
+protease_rowset_frame <- do.call("rbind", protease_rowset)
+protease_rowset_frame[is.na(protease_rowset_frame)] <- 0
+
+meta_subset_reorg <- meta_subset[unlist(lapply(colnames(protease_rowset_frame), function(x) which(meta_subset$NAME == x))),]
+library(ComplexHeatmap)
+#bat_data <- readLines("bat_human_orthofinder.txt")
+
+col_set_geno <- list(TREAT = c("mock" = "blue", "infected" = "yellow"))
+treat_col <- HeatmapAnnotation(TREAT = meta_subset_reorg$TREAT, col = col_set_geno, which = "column", show_annotation_name = FALSE)
+
+col_set_SPEC <- list(SPECIES = c("human" = "lightblue", "bat" = "orange"))
+spec_col <- HeatmapAnnotation(SPECIES = meta_subset_reorg$species, col = col_set_SPEC, which = "column", show_annotation_name = FALSE)
+
+col_set_cell_type <- list(CELL = c("calu3" = "red", "a549" = "purple", "efk3B" = "brown", "EF_LU" = "gold"))
+spec_cell <- HeatmapAnnotation(CELL = meta_subset_reorg$cell_type, col = col_set_cell_type, which = "column", show_annotation_name = FALSE)
+
+col_set_time <- list(TIME = c("12" = "pink", "24" = "magenta"))
+spec_time <- HeatmapAnnotation(TIME = meta_subset_reorg$TIME, col = col_set_time, which = "column", show_annotation_name = FALSE)
+
+PROTEASE_thresh_map = Heatmap(protease_rowset_frame, column_title= "Z-scored",# title = "Z-scored", #paste0(outfix, "_all_samples_all_genes_STAR_heatmap"),
+	cluster_columns=FALSE, row_names_gp = gpar(fontsize = 6), show_row_names=T, show_column_names = F, top_annotation = c(treat_col,
+		spec_col, spec_cell, spec_time))
+
+protease_rowset_frame_sums <- apply(protease_rowset_frame, 1, function(x) length(which(x != 0)))
+
+protease_rowset_frame_cut <- protease_rowset_frame[protease_rowset_frame_sums >= (dim(protease_rowset_frame)[2]*0.25),]
+
+PROTEASE_thresh_map_cut = Heatmap(protease_rowset_frame_cut, column_title= "Z-scored",# title = "Z-scored", #paste0(outfix, "_all_samples_all_genes_STAR_heatmap"),
+	cluster_columns=FALSE, row_names_gp = gpar(fontsize = 6), show_row_names=T, show_column_names = F, top_annotation = c(treat_col,
+		spec_col, spec_cell, spec_time))
+pdf("COMBINED_species_heatmaps_AUG2023_PROTEASES.pdf", width = 12, height = 12)
+print(PROTEASE_thresh_map)
+print(PROTEASE_thresh_map_cut)
+dev.off()

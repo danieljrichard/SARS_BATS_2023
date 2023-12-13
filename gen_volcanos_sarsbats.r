@@ -144,9 +144,13 @@ gen_volcano <- function(dat, outfix, human = F) {
 	colCustom[which(abs(curr_results$log2FoldChange) > 1)] <- "red"
 	colCustom[which(curr_results$padj > 0.05)] <- "grey"
 
+  curr_results$colour <- colCustom
+
 	###
 	##Update April 20th 2021
 	##there's some crazy outliers, so..
+
+  orig_results <- curr_results
 
 	curr_results$log2FoldChange[curr_results$log2FoldChange > 10] <- 10
 	curr_results$log2FoldChange[curr_results$log2FoldChange < -10] <- -10
@@ -157,6 +161,9 @@ gen_volcano <- function(dat, outfix, human = F) {
 
 	top_genes <- sig_results$gene[order(-abs(sig_results$log2FoldChange))][1:min(c(20, dim(sig_results)[1]))]
 
+  orig_results$starred <- ""
+  orig_results$starred[orig_results$gene %in% top_genes] <- "*"
+
 	#outfix <- gsub(".rds", "", rds)
 
 	#out_title <- paste0(outfix, "_differential_expression")
@@ -164,10 +171,19 @@ gen_volcano <- function(dat, outfix, human = F) {
     curr_volc <- EnhancedVolcano(curr_results, lab = curr_results$gene,
 	x = "log2FoldChange", y = "padj", pCutoff = 0.05, selectLab = top_genes, FCcutoff = 1, col = c("grey", "grey", "blue", "red"), ylab = bquote(~-Log[10]~adjusted~italic(p)),
 	title = NULL, subtitle = out_title, caption = "", legendPosition = "none")
-	pdf(paste0(outfix, "_differential_expression_VOLCANO", ".pdf"), width = 12, height = 12)
+
+curr_volc <- curr_volc + theme_classic() + theme(legend.position="none")
+
+	pdf(paste0(outfix, "_differential_expression_VOLCANO2", ".pdf"), width = 12, height = 12)
 	print(curr_volc)
 	dev.off()
 	##############
+
+  ##was requested output.
+  ##going to assume only significant results are needed.
+  orig_results <- orig_results[orig_results$padj < 0.05,]
+  orig_results <- orig_results[rev(order(orig_results$starred)),]
+  write.csv(orig_results, paste0(outfix, "_differential_expression_VOLCANO_results.csv"), row.names = F)
 }
 
 

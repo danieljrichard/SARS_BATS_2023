@@ -145,6 +145,7 @@ chemokine_one <- c("ADIPOQ","AIMP1","ALKAL1","ALKAL2","AREG","BMP1","BMP10","BMP
 chemokine_two <- c("C5","CCL1","CCL11","CCL13","CCL14","CCL15","CCL16","CCL17","CCL18","CCL19","CCL2","CCL20","CCL21","CCL22","CCL23","CCL24","CCL25","CCL26","CCL27","CCL28","CCL3","CCL3L1","CCL3L3","CCL4","CCL5","CCL7","CCL8","CKLF","CX3CL1","CXCL1","CXCL10","CXCL11","CXCL12","CXCL13","CXCL14","CXCL16","CXCL2","CXCL3","CXCL5","CXCL6","CXCL8","CXCL9","GPR15LG","PF4","PF4V1","PPBP","XCL1","XCL2")
 
 all_chemo <- unique(c(chemokine_one, chemokine_two))
+
 chemo_res <- gen_sub_matrix("bla", huge_matrix2, "Chemokine", manual = all_chemo)
 IFN_res <- gen_sub_matrix(IFN, huge_matrix2, "IFN-I Response")
 death_res <- gen_sub_matrix(death, huge_matrix2, "Cell_Death", "CELL_DEATH")
@@ -225,12 +226,16 @@ gen_sub_matrix_tiny <- function(goterms, huge_matrix2, label, dogrep= NULL, manu
 setwd("PCA")
 gen_heatmap(response, "GO_IFNI-response_terms", "GO IFN-I RESPONSE")
 gen_heatmap(response, "GO_IFNI-response_terms_NOLU", "GO IFN-I RESPONSE", T)
+gen_heatmap(response, "GO_IFNI-response_terms_NOLU_12H", "GO IFN-I RESPONSE - 12H", T, 12)
+gen_heatmap(response, "GO_IFNI-response_terms_NOLU_24H", "GO IFN-I RESPONSE - 24H", T, 24)
 
 ##chemokine terms
 gen_heatmap(chemo, "GO_Chemokine_terms", "GO CHEMOKINE")
 gen_heatmap(chemo, "GO_Chemokine_terms_NOLU", "GO CHEMOKINE", T)
+gen_heatmap(chemo, "GO_Chemokine_terms_NOLU_12H", "GO CHEMOKINE - 12H", T, 12)
+gen_heatmap(chemo, "GO_Chemokine_terms_NOLU_24H", "GO CHEMOKINE - 24H", T, 24)
 
-gen_heatmap <- function(log_frame, OUTFIX, plot_name, remove_LU = F) {
+gen_heatmap <- function(log_frame, OUTFIX, plot_name, remove_LU = F, TIME = NULL) {
 if(remove_LU) {
     print("removing LU!")
     log_frame <- log_frame[, !grepl("EF_LU", colnames(log_frame))]
@@ -249,6 +254,13 @@ plotframe$time <- factor(unlist(lapply(sampleset, function(x) unlist(strsplit(x,
 plotframe$species <- "human"
 plotframe$species[plotframe$cell %in% c("EFK3B", "EF")] <- "bat"
 
+if(!is.null(TIME)) {
+   plotframe <- plotframe[plotframe$time == TIME,]
+   log_frame <- log_frame[, plotframe$sample]
+   na_check <- apply(log_frame, 1, function(x) length(which(is.na(x))))
+   log_frame <- log_frame[na_check == 0,]
+}
+
 library(ComplexHeatmap)
 #bat_data <- readLines("bat_human_orthofinder.txt")
 
@@ -261,12 +273,20 @@ spec_col <- HeatmapAnnotation(SPECIES = plotframe$species, col = col_set_SPEC, w
 col_set_cell_type <- list(CELL = c("CALU3" = "red", "A549" = "purple", "EFK3B" = "brown", "EF" = "gold"))
 spec_cell <- HeatmapAnnotation(CELL = plotframe$cell, col = col_set_cell_type, which = "column", show_annotation_name = FALSE)
 
+if(is.null(TIME)) {
+
 col_set_time <- list(TIME = c("12" = "pink", "24" = "magenta"))
 spec_time <- HeatmapAnnotation(TIME = plotframe$time, col = col_set_time, which = "column", show_annotation_name = FALSE)
 
 PROTEASE_thresh_map = Heatmap(log_frame, column_title= plot_name, name = "log2FC", #paste0(outfix, "_all_samples_all_genes_STAR_heatmap"),
 	cluster_columns=FALSE, row_names_gp = gpar(fontsize = 6), show_row_names=F, show_column_names = F, top_annotation = c(spec_col, spec_cell, spec_time))
+}else{
+    print("setting time manually")
 
+PROTEASE_thresh_map = Heatmap(log_frame, column_title= plot_name, name = "log2FC", #paste0(outfix, "_all_samples_all_genes_STAR_heatmap"),
+	cluster_columns=FALSE, row_names_gp = gpar(fontsize = 6), show_row_names=F, show_column_names = F, top_annotation = c(spec_col, spec_cell))
+
+}
 #log_frame_sums <- apply(log_frame, 1, function(x) length(which(x != 0)))
 
 na_counts2 <- apply(log_frame, 1, function(x) length(which(is.na(x))))
@@ -274,8 +294,13 @@ na_counts2 <- apply(log_frame, 1, function(x) length(which(is.na(x))))
 #log_frame_sums_cut <- log_frame[log_frame_sums >= (dim(log_frame_sums)[2]*0.25),]
 log_frame_sums_cut <- log_frame[na_counts2 < 3,]
 
+if(is.null(TIME)) {
 PROTEASE_thresh_map_cut = Heatmap(log_frame_sums_cut, column_title= plot_name,  name = "log2FC", #paste0(outfix, "_all_samples_all_genes_STAR_heatmap"),
 	cluster_columns=FALSE, row_names_gp = gpar(fontsize = 6), show_row_names=F, show_column_names = F, top_annotation = c(spec_col, spec_cell, spec_time))
+}else{
+PROTEASE_thresh_map_cut = Heatmap(log_frame_sums_cut, column_title= plot_name,  name = "log2FC", #paste0(outfix, "_all_samples_all_genes_STAR_heatmap"),
+	cluster_columns=FALSE, row_names_gp = gpar(fontsize = 6), show_row_names=F, show_column_names = F, top_annotation = c(spec_col, spec_cell))
+}
 
 pdf(paste0(OUTFIX, "_cross_species_heatmaps.pdf"), width = 12, height = 12)
 print(PROTEASE_thresh_map)
