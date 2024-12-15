@@ -1,20 +1,13 @@
 ##############
 ##Comparing human and bat genes
-##but instead of boxplots, it was requested for HEATMAPS
-##so let's just...see about this.
-##August 21st 2023
 ##
 ###############
 
 meta_file <- "SARS_infect_human_bat_METADATA_OCT2020_extra.csv"
 
 meta_data <- read.csv(meta_file, header = T)
-##NAME
-#meta_subset$NAME <- paste0(meta_subset$cell_type, "_", meta_subset$treatment)
 meta_subset <- meta_data
 meta_subset$NAME <- paste0(meta_subset$species, "_", meta_subset$cell_type, "_", meta_subset$sample_num, "_", meta_subset$treatment)
-
-##NOW. we need to convert.
 
 meta_subset$sample <- paste0(meta_subset$sample_num, "_S", meta_subset$sample_num)
 
@@ -29,16 +22,13 @@ bat_data <- lapply(bat_files, read.csv)
 human_files <- readLines("human_humandef.txt")
 human_dat <- lapply(human_files, read.csv)
 
-##Now I'm fairly confident I can come up with scaled expression values in a lovely heatmap format.
-##but I need to first define the genes I'm going to use.
-##Someone suggested all proteases, but what about significant genes coming from both species?
-
 human_sigs <- list()
 for (x in 1:length(human_dat)) {
     curr_set <- human_dat[[x]]
     curr_set <- curr_set[curr_set$padj < 0.05,]
- #   curr_set <- curr_set[curr_set$log2FoldChange > log2(1.5),]
     curr_set <- curr_set[curr_set$log2FoldChange > 0,]
+    ##logFC cutoff of 1.
+    curr_set <- curr_set[curr_set$log2FoldChange > 2,]
     human_sigs[[x]] <- curr_set
 }
 
@@ -56,6 +46,7 @@ for (x in 1:length(bat_data)) {
     bat_set <- bat_set[bat_set$padj < 0.05,]
     #bat_set <- bat_set[bat_set$log2FoldChange > log2(1.5),]
     bat_set <- bat_set[bat_set$log2FoldChange > 0,]
+    bat_set <- bat_set[bat_set$log2FoldChange > 2,]
     for (a in which(is.na(bat_set$ORTHOFIND))) {
         bat_set$ORTHOFIND[a] <- bat_set$gene[a]
     }
@@ -64,9 +55,6 @@ for (x in 1:length(bat_data)) {
  }
 
 
-########
-##Aug 28th 2023
-##now going to make some really fancy vennplots
 ##we'll make two, one for each time-point.
 
 bat_names <- unlist(lapply(bat_files, function(x) unlist(strsplit(x, "/"))[length(unlist(strsplit(x, "/")))]))
@@ -81,15 +69,10 @@ bat_genes <- lapply(bat_sigs, function(x) x$ORTHOFIND)
 human_genes <- lapply(human_sigs, function(x) x$SYMBOL)
 
 ####
-##Update October 4th 2023
-##we're going to remove EF-LU b/c they do weird things, and Kaushal has
-##experimental data to suggest they don't actually get infected all that well.
+##Remove EF-LU b/c experimental data to suggest they don't actually get infected all that well.
 
 bat_genes <- bat_genes[!grepl("EF_LU", bat_names)]
 bat_names <- bat_names[!grepl("EF_LU", bat_names)]
-
-##Update October 4th 2023
-##was also requested to only compare ef3kb to Calu3
 
 if(FALSE) {
 human_genes <- human_genes[!grepl("A549", human_names)]
@@ -121,8 +104,6 @@ for (x in 1:(length(geneset)-1)) {
         pairwise[[paste0(names(geneset)[x], "-int-", names(geneset)[y])]] <- curr_overlap
     }
 }
-##I'm not going to bother with all-possible-triplets, quadruplets, etc.
-##I'm sure there's a clever bespoke way to code this algorithmically, but no.
 
 ##and let's just fill in some commas to make a square CSV
 
@@ -137,8 +118,10 @@ colnames(final_frame) <- names(all_lines)
 write.csv(final_frame, paste0(outfix, "_overlap_lists.csv"), row.names = F)
 }
 
-generate_intersections(twelve_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_removed_12H")
-generate_intersections(twelve_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_calu3_removed_12H")
+#generate_intersections(twelve_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_removed_12H")
+generate_intersections(twelve_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_removed_12H_cutoff2")
+#generate_intersections(twelve_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_calu3_removed_12H")
+generate_intersections(twelve_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_calu3_removed_12H_cutoff2")
 
 library(ggvenn)
 
@@ -154,7 +137,7 @@ names(twentyfour_set_full) <- c(bat_names[grepl("24", bat_names)], human_names[g
 names(twentyfour_set_full) <- gsub("_TIME_", "-", names(twentyfour_set_full))
 
 #generate_intersections(twentyfour_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_removed_24H")
-generate_intersections(twentyfour_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_calu3_removed_24H")
+generate_intersections(twentyfour_set_full, "SARS_BATS_infection_upreg_venndiagram_eflu_calu3_removed_24H_cutoff2")
 
 
 twentyfour_plots <- ggvenn(
@@ -163,7 +146,8 @@ twentyfour_plots <- ggvenn(
   stroke_size = 0.5, set_name_size = 4
 )
 
-pdf("SARS_BATS_infection_upreg_venndiagram_eflu_removed.pdf", width = 12, height = 12)
+#pdf("SARS_BATS_infection_upreg_venndiagram_eflu_removed.pdf", width = 12, height = 12)
+pdf("SARS_BATS_infection_upreg_venndiagram_eflu_removed_logFC2.pdf", width = 12, height = 12)
 #pdf("SARS_BATS_infection_upreg_venndiagram_EFK3B_CALU3.pdf", width = 12, height = 12)
 print(twelve_plots)
 print(twentyfour_plots)
@@ -218,7 +202,6 @@ bat_unique_nonzeroes <- bat_unique_nonzeroes[!is.na(bat_unique_nonzeroes)]
 bat_unique_nonzeroes <- sort(bat_unique_nonzeroes, decreasing = T)
 best_twenty_bats_nozeroes <- names(bat_unique_nonzeroes)[1:20]
 
-
 ##now, for each part of the heatmap...
 
 ##start with SHARED...
@@ -230,8 +213,6 @@ for (gene in shared_human_bat) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")
@@ -264,9 +245,6 @@ for (gene in shared_human_bat) {
     human_row <- do.call("cbind", human_expression)
 
     super_row <- cbind(human_row, bat_row)
-   # super_row2 <- as.matrix(super_row)
-   # super_row2[is.nan(super_row2)] <- 0
-   # super_row <- as.data.frame(super_row2)
     colnames(super_row) <- unlist(lapply(colnames(super_row), function(x) meta_subset[meta_subset$simple == x, "NAME"]))
 shared_rowset[[gene]] <- super_row
 }
@@ -275,7 +253,6 @@ shared_rowset_frame <- do.call("rbind", shared_rowset)
 
 meta_subset_reorg <- meta_subset[unlist(lapply(colnames(shared_rowset_frame), function(x) which(meta_subset$NAME == x))),]
 library(ComplexHeatmap)
-#bat_data <- readLines("bat_human_orthofinder.txt")
 
 col_set_geno <- list(TREAT = c("mock" = "blue", "infected" = "yellow"))
 treat_col <- HeatmapAnnotation(TREAT = meta_subset_reorg$TREAT, col = col_set_geno, which = "column", show_annotation_name = FALSE)
@@ -298,7 +275,7 @@ SHARED_thresh_map = Heatmap(shared_rowset_frame, column_title= "Z-scored",# titl
 ############
 ############
 ############
-##HUMAN SPECIFIC YALL
+##HUMAN SPECIFIC
 
 human_best_rowset <- list()
 
@@ -308,8 +285,6 @@ for (gene in best_twenty_humans) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")
@@ -342,9 +317,6 @@ for (gene in best_twenty_humans) {
     human_row <- do.call("cbind", human_expression)
 
     super_row <- cbind(human_row, bat_row)
-   # super_row2 <- as.matrix(super_row)
-   # super_row2[is.nan(super_row2)] <- 0
-   # super_row <- as.data.frame(super_row2)
     colnames(super_row) <- unlist(lapply(colnames(super_row), function(x) meta_subset[meta_subset$simple == x, "NAME"]))
 human_best_rowset[[gene]] <- super_row
 }
@@ -371,8 +343,6 @@ for (gene in best_twenty_bats) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")
@@ -405,9 +375,6 @@ for (gene in best_twenty_bats) {
     human_row <- do.call("cbind", human_expression)
 
     super_row <- cbind(human_row, bat_row)
-   # super_row2 <- as.matrix(super_row)
-   # super_row2[is.nan(super_row2)] <- 0
-   # super_row <- as.data.frame(super_row2)
     colnames(super_row) <- unlist(lapply(colnames(super_row), function(x) meta_subset[meta_subset$simple == x, "NAME"]))
 bat_best_rowset[[gene]] <- super_row
 }
@@ -439,8 +406,6 @@ for (gene in proteases) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")
@@ -473,9 +438,6 @@ for (gene in proteases) {
     human_row <- do.call("cbind", human_expression)
 
     super_row <- cbind(human_row, bat_row)
-   # super_row2 <- as.matrix(super_row)
-   # super_row2[is.nan(super_row2)] <- 0
-   # super_row <- as.data.frame(super_row2)
     colnames(super_row) <- unlist(lapply(colnames(super_row), function(x) meta_subset[meta_subset$simple == x, "NAME"]))
 protease_rowset[[gene]] <- super_row
 }

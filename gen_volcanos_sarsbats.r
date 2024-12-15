@@ -116,6 +116,11 @@ setwd("VOLCANOES")
 lapply(1:length(human_dat), function(x) gen_volcano(human_dat[[x]], gsub("_TIME_", "-", human_names[x]), T))
 lapply(1:length(bat_data), function(x) gen_volcano(bat_data[[x]], gsub("_TIME_", "-", bat_names[x]), F))
 
+###April 12th 2024
+##requested manually add ZBP1 for Efk3B-hACE2
+dat <- bat_data[[1]]
+outfix <- "EFK3B-12"
+
 gen_volcano <- function(dat, outfix, human = F) {
 	
 	library(EnhancedVolcano)
@@ -140,8 +145,9 @@ gen_volcano <- function(dat, outfix, human = F) {
 	##Let's define some...CUSTOM COLOURS..
 
 	colCustom = rep("grey", dim(curr_results)[1])
-	colCustom[which(curr_results$padj < 0.05)] <- "blue"
-	colCustom[which(abs(curr_results$log2FoldChange) > 1)] <- "red"
+	colCustom[which(curr_results$padj < 0.05)] <- "tan"
+	colCustom[which(curr_results$log2FoldChange > 1)] <- "red"
+	colCustom[which(curr_results$log2FoldChange < -1)] <- "blue"
 	colCustom[which(curr_results$padj > 0.05)] <- "grey"
 
   curr_results$colour <- colCustom
@@ -156,8 +162,9 @@ gen_volcano <- function(dat, outfix, human = F) {
 	curr_results$log2FoldChange[curr_results$log2FoldChange < -10] <- -10
 
 	names(colCustom)[colCustom == "grey"] <- "Insignificant"
-	names(colCustom)[colCustom == "blue"] <- "Significant"
+	names(colCustom)[colCustom == "tan"] <- "Significant"
 	names(colCustom)[colCustom == "red"] <- "Significant-logFC > 1"
+	names(colCustom)[colCustom == "blue"] <- "Significant-logFC < -1"
 
 	top_genes <- sig_results$gene[order(-abs(sig_results$log2FoldChange))][1:min(c(20, dim(sig_results)[1]))]
 
@@ -174,7 +181,13 @@ gen_volcano <- function(dat, outfix, human = F) {
 
 curr_volc <- curr_volc + theme_classic() + theme(legend.position="none")
 
-	pdf(paste0(outfix, "_differential_expression_VOLCANO2", ".pdf"), width = 12, height = 12)
+##requested # of DEGs
+curr_lab  <- paste0("Number of Highly Up-regulated DEGs: ", length(which(sig_results$log2FoldChange > 1)),
+  "\nNumber of Highly Down-regulated DEGs: ", length(which(sig_results$log2FoldChange < -1)))
+
+ curr_volc <- curr_volc + annotate("text", x = Inf, y = Inf, label = curr_lab, hjust = 1, vjust = 1, size = 4)
+
+	pdf(paste0(outfix, "_differential_expression_VOLCANO3", ".pdf"), width = 16, height = 16)
 	print(curr_volc)
 	dev.off()
 	##############
