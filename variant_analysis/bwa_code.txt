@@ -1,0 +1,25 @@
+#################################
+# Aligning fastq to SARS-CoV-2
+#
+# Author: Jessica Luc, 2022
+#################################
+
+#!/bin/bash
+mkdir results
+cd results
+for i in {1..48}
+do
+  echo "Processing sample $i"
+  mkdir $i
+  cd $i
+  cat *R1*.gz >reads1.fq.gz
+  cat *R2*.gz >reads2.fq.gz
+
+  echo "Mapping reads for sample $i"
+  bwa mem -t 20 sars-cov-2.fa reads1.fq.gz reads2.fq.gz  > $i.sam
+  samtools view -b -S $i.sam > $i.bam
+  samtools sort -@ 20 $i.bam -o $i.sorted.bam
+  samtools index $i.sorted.bam
+
+
+done

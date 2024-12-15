@@ -1,0 +1,33 @@
+###########################################
+# Variant Calling with Freebayes
+#
+# Author: Jessica Luc, 2022
+###########################################
+
+#!/bin/bash
+
+cd results
+for i in {1..48}
+do
+  echo "Processing sample $i"
+  cd $i
+  echo "Calling variants for sample $i using freebayes"
+  freebayes-v1.3.0-1 -f ref.fa -F 0.01 -C 1 --pooled-continuous $i.sorted.bam >$i.freebayes.vcf
+  cd ..
+
+done
+
+##Renaming file names
+for i in {1..48}
+do
+  echo "Processing sample $i"
+  zcat $i.freebayes.vcf.gz | sed "s/unknown/$i/" >$i.freebayes.fixed.vcf
+done
+
+##merge
+for file in *.fixed.vcf
+do 
+  bgzip $file
+  bcftools index $file.gz
+done
+bcftools merge *.fixed.vcf.gz -o merged.vcf
