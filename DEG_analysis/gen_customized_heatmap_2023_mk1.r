@@ -1,16 +1,11 @@
 ##############
 ##Comparing human and bat genes
-##but instead of boxplots, it was requested for HEATMAPS
-##so let's just...see about this.
-##August 21st 2023
 ##
 ###############
 
 meta_file <- "SARS_infect_human_bat_METADATA_OCT2020_extra.csv"
 
 meta_data <- read.csv(meta_file, header = T)
-##NAME
-#meta_subset$NAME <- paste0(meta_subset$cell_type, "_", meta_subset$treatment)
 meta_subset <- meta_data
 meta_subset$NAME <- paste0(meta_subset$species, "_", meta_subset$cell_type, "_", meta_subset$sample_num, "_", meta_subset$treatment)
 
@@ -28,10 +23,6 @@ bat_data <- lapply(bat_files, read.csv)
 
 human_files <- readLines("human_humandef.txt")
 human_dat <- lapply(human_files, read.csv)
-
-##Now I'm fairly confident I can come up with scaled expression values in a lovely heatmap format.
-##but I need to first define the genes I'm going to use.
-##Someone suggested all proteases, but what about significant genes coming from both species?
 
 human_sigs <- list()
 for (x in 1:length(human_dat)) {
@@ -61,7 +52,6 @@ for (x in 1:length(bat_data)) {
 out_counts_bats <- table(unlist(lapply(bat_sigs, function(x) x$gene)))
 ##want at least in two conditions
 out_count_two_bats <- out_counts_bats[out_counts_bats >= 2]
-##oh....k.
 
 massive_convert <- do.call("rbind", lapply(bat_data, function(x) x[, c("gene", "ORTHOFIND")]))
 massive_convert <- massive_convert[!duplicated(massive_convert),]
@@ -70,10 +60,8 @@ converted_bat_counts <- unlist(lapply(names(out_counts_bats), function(x) massiv
 
 shared_human_bat <- intersect(names(out_counts), converted_bat_counts)
 human_unique <- setdiff(names(out_counts), converted_bat_counts)
-##that's a lot of human unique.
 human_unique_counts <- out_counts[human_unique]
 human_unique_string <- names(human_unique_counts)[human_unique_counts > 1]
-##...let's do it better.
 human_unique_foldchanges <- unlist(lapply(human_unique, function(x) max(unlist(lapply(human_sigs, function(y) y[y$SYMBOL == x, "log2FoldChange"])))))
 human_unique_nonzeroes <- unlist(lapply(human_unique, function(x) max(unlist(lapply(human_sigs, function(y) y[y$SYMBOL == x, "log2FoldChange"])))))
 names(human_unique_foldchanges) <- human_unique
@@ -90,7 +78,6 @@ additional_bats <- names(out_counts_bats)[is.na(converted_bat_counts)]
 
 total_bat_unique <- c(bat_unique, additional_bats)
 total_bat_unique <- total_bat_unique[!is.na(total_bat_unique)]
-##Let's pick top 20 for bats.
 bat_unique_foldchanges <- unlist(lapply(total_bat_unique, function(x) max(unlist(lapply(bat_sigs, function(y) y[y$gene == x, "log2FoldChange"])))))
 bat_unique_foldchanges <- as.numeric(bat_unique_foldchanges)
 names(bat_unique_foldchanges) <- total_bat_unique
@@ -117,8 +104,6 @@ for (gene in shared_human_bat) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")
@@ -185,7 +170,7 @@ SHARED_thresh_map = Heatmap(shared_rowset_frame, column_title= "Z-scored",# titl
 ############
 ############
 ############
-##HUMAN SPECIFIC YALL
+##HUMAN SPECIFIC
 
 human_best_rowset <- list()
 
@@ -195,8 +180,6 @@ for (gene in best_twenty_humans) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")
@@ -247,7 +230,7 @@ human_best_thresh_map = Heatmap(human_best_rowset_frame, column_title= "Z-scored
 ##########################
 ##########################
 ##########################
-##and last but not least, the bat-specific
+##the bat-specific
 
 bat_best_rowset <- list()
 
@@ -258,8 +241,6 @@ for (gene in best_twenty_bats) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")
@@ -421,8 +402,6 @@ for (gene in proteases) {
 
     curr_human_dat <- lapply(1:length(human_dat), function(x) human_dat[[x]][human_dat[[x]]$SYMBOL == gene,])
 
-    ##oh gods...what about multi-mappers?
-    #...throw them out?
     size_set <- unlist(lapply(curr_bat_dat, function(x) dim(x)[1]))
     if(length(which(size_set > 1)) != 0) {
         print("multi-mapper")

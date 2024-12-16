@@ -167,10 +167,8 @@ converted_bat_counts <- unlist(lapply(names(out_counts_bats), function(x) massiv
 
 shared_human_bat <- intersect(names(out_counts), converted_bat_counts)
 human_unique <- setdiff(names(out_counts), converted_bat_counts)
-##that's a lot of human unique.
 human_unique_counts <- out_counts[human_unique]
 human_unique_string <- names(human_unique_counts)[human_unique_counts > 1]
-##...let's do it better.
 human_unique_foldchanges <- unlist(lapply(human_unique, function(x) max(unlist(lapply(human_sigs, function(y) y[y$SYMBOL == x, "log2FoldChange"])))))
 human_unique_nonzeroes <- unlist(lapply(human_unique, function(x) max(unlist(lapply(human_sigs, function(y) y[y$SYMBOL == x, "log2FoldChange"])))))
 names(human_unique_foldchanges) <- human_unique

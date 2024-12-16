@@ -7,13 +7,13 @@
 
 ###################################
 
-masta <- "BAT_BP_ENRICHMENT_COMPARISONS_METATABLE.csv"
+masta <- "bat_stringent_metadata.csv"
 global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/BAT/BAT_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
 ##There we go.
 ##one other thing we need: gene expression data:
 #find $PWD/. -name "*.csv" | grep "STATS.csv" > BAT_final_timepoints_statsfiles.txt
 stats_files <- "BAT_final_timepoints_statsfiles.txt"
-outfix <- "BAT_GO_enrichment_top10_SQUASHING"
+outfix <- "BAT_GO_enrichment_top10_SQUASHING_STRINGENT"
 consolidate_species_level_GO_terms(masta, global_map, stats_files, outfix, topn=10)
 consolidate_species_level_GO_terms(masta, global_map, stats_files, paste0(outfix, "_AGGRESSIVE"), topn=10, AGGRESSIVE = T)
 
@@ -23,8 +23,8 @@ consolidate_species_level_GO_terms(masta, global_map, stats_files, paste0(outfix
 global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/HUMAN/HUMAN_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
 stats_files <- "HUMAN_final_timepoints_statsfiles.txt"
 #find $PWD/. -name "*STATS.csv" > HUMAN_final_timepoints_statsfiles.txt
-outfix <- "HUMAN_GO_enrichment_top10_SQUASHING"
-masta <- "HUMAN_BP_MEGATABLE.csv"
+outfix <- "HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT"
+masta <- "human_meta_STRINGENT.csv"
 topn <- 10
 consolidate_species_level_GO_terms(masta, global_map, stats_files, outfix, topn, revcol = T)
 consolidate_species_level_GO_terms(masta, global_map, stats_files, paste0(outfix, "_AGGRESSIVE"), topn, AGGRESSIVE = T, revcol = T)
@@ -34,11 +34,14 @@ consolidate_species_level_GO_terms <- function(masta, global_map, stats_files, o
 	meta <- read.csv(masta, stringsAsFactors = FALSE)
 	
 	csv_collapse <- unlist(c(meta$file1, meta$file2))
-	
+	csv_collapse <- csv_collapse[csv_collapse != ""]
+    csv_collapse <- csv_collapse[!grepl("DOWNREG", csv_collapse)]
+    topn <- topn*2
 	csv_dat <- lapply(csv_collapse, read.csv)
 	
 	csv_filt <- lapply(csv_dat, function(x) x[x$PADJ < 0.05,])
 	all_hits_ever <- unique(unlist(sapply(csv_filt, function(x) x$GO.ID)))
+    library(data.table)
 	if(AGGRESSIVE) {
 		csv_ULTRAMEGA <- as.data.frame(rbindlist(csv_filt))
 	}
@@ -61,6 +64,7 @@ consolidate_species_level_GO_terms <- function(masta, global_map, stats_files, o
 	glob_GO <- as.data.frame(fread(global_map, header = F))
 	
 	stats_dat <- readLines(stats_files)
+    stats_dat <- stats_dat[!grepl("EF_LU", stats_dat)]
 	stats_tables <- lapply(stats_dat, read.csv)
 	
 	gimme_name <- function(csv1) {
@@ -109,6 +113,8 @@ consolidate_species_level_GO_terms <- function(masta, global_map, stats_files, o
 	glob_GO <- as.data.frame(fread(global_map, header = F))
 	
 	stats_dat <- readLines(stats_files)
+    stats_dat <- stats_dat[!grepl("EF_LU", stats_dat)]
+
 	stats_tables <- lapply(stats_dat, read.csv)
 	
 	gimme_name <- function(csv1) {
@@ -177,6 +183,7 @@ consolidate_species_level_GO_terms <- function(masta, global_map, stats_files, o
 	subset_EXP_data <- lapply(ALL_genesets, function(x) rbindlist(lapply(1:length(stats_tables), function(y) 
 			subset(stats_tables[[y]], stats_tables[[y]]$gene %in% x)[, c("log2FoldChange", "TYPE")])))
 	
+	##Now, gotta just label.
 	for (x in 1:length(ALL_genesets)) {
 		subset_EXP_data[[x]]$GO <- names(ALL_genesets)[x]
 		
@@ -254,21 +261,37 @@ consolidate_species_level_GO_terms <- function(masta, global_map, stats_files, o
 
 ##aligning HUMAN to BAT hits:
 
-target_RDS <- "BAT_GO_enrichment_top10_SQUASHING_grand_EXP_frame.rds"
+target_RDS <- "BAT_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame.rds"
 global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/HUMAN/HUMAN_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
 stats_files <- "HUMAN_final_timepoints_statsfiles.txt"
 #find $PWD/. -name "*STATS.csv" > HUMAN_final_timepoints_statsfiles.txt
-outfix <- "BAT_GO_enrichment_top10_SQUASHING_ALIGN_HUMAN"
+outfix <- "BAT_GO_enrichment_STRINGENT_top10_SQUASHING_ALIGN_HUMAN"
 
 ALIGN_CROSS_SPECIES_FANCYSAUCE(target_RDS, global_map, stats_files, outfix)
-ALIGN_CROSS_SPECIES_FANCYSAUCE("BAT_GO_enrichment_top10_SQUASHING_AGGRESSIVE_grand_EXP_frame.rds", global_map, stats_files, outfix = paste0(outfix, "_AGGRESSIVE"))
 
-target_RDS <- "HUMAN_GO_enrichment_top10_SQUASHING_grand_EXP_frame.rds"
+target_RDS <- "HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame.rds"
+if(FALSE) {
+	test <- readRDS("HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame.rds")
+	library(dplyr)
+	test2 <- test %>% group_by(GO_TERM) %>% summarise(mean = mean(log2FoldChange), sd = sd(log2FoldChange))
+	##on average upregulated
+	test3 <- test[test$GO_TERM %in% test2$GO_TERM[test2$mean > 0],]
+	test3$GO_TERM <- droplevels(test3$GO_TERM)
+	saveRDS(test3, "HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame_upreg.rds")
+}
+
+target_RDS <- "HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame_upreg.rds"
 global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/BAT/BAT_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
-stats_files <- "BAT_final_timepoints_statsfiles.txt"
-outfix <- "HUMAN_GO_enrichment_top10_SQUASHING_ALIGN_BAT"
+#grep -v  "EF_LU" BAT_final_timepoints_statsfiles.txt > BAT_final_timepoints_statsfiles_noEF_LU.txt
+stats_files <- "BAT_final_timepoints_statsfiles_noEF_LU.txt"
+outfix <- "HUMAN_GO_enrichment_STRINGENT_upreg_top10_SQUASHING_ALIGN_BAT"
 ALIGN_CROSS_SPECIES_FANCYSAUCE(target_RDS, global_map, stats_files, outfix, reverse_col = T)
-ALIGN_CROSS_SPECIES_FANCYSAUCE(target_RDS= "HUMAN_GO_enrichment_top10_SQUASHING_AGGRESSIVE_grand_EXP_frame.rds", global_map, stats_files, outfix = paste0(outfix, "_AGGRESSIVE"), reverse_col = T)
+
+stats_files <- "HUMAN_final_timepoints_statsfiles.txt"
+global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/HUMAN/HUMAN_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
+#find $PWD/. -name "*STATS.csv" > HUMAN_final_timepoints_statsfiles.txt
+outfix <- "BAT_GO_enrichment_STRINGENT_top10_SQUASHING_ALIGN_HUMAN"
+
 
 ALIGN_CROSS_SPECIES_FANCYSAUCE <- function(target_RDS, global_map, stats_files, outfix, reverse_col = F) {
 
@@ -454,6 +477,15 @@ saveRDS(target_dat, paste0(outfix, "_target_dat.rds"))
 	dev.off()
 	
 
+}
+
+##cleanup human output
+
+if(FALSE) {
+	test <- readRDS("HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame_upreg.rds")
+	human_dat <- read.csv("HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame_CUSTOM_APRIL2021.csv")
+	human_dat_cut <- human_dat[human_dat$GO %in% test$GO,]
+	write.csv(human_dat_cut, "HUMAN_GO_enrichment_top10_SQUASHING_STRINGENT_grand_EXP_frame_CUSTOM_APRIL2021_cut.csv", row.names = F)
 }
 
 ##OK...

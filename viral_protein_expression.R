@@ -3,7 +3,6 @@
 ##April 16th 2024
 ####
 
-#1) Figure 3E: Generate a figure to describe viral protein levels. You can decide how to #represent it. It can be a heat map or the same way as Figure 3D (or any other way).
 
 data <- read.csv("proteomics_viral_proteins.csv")
 
@@ -22,7 +21,6 @@ for (prot in rownames(quant_dat)) {
             quant_dat[prot, which(grepl(".24h", colnames(quant_dat), fixed = T))],
             quant_dat[prot, which(grepl(".48h", colnames(quant_dat), fixed = T))]
         ), as.numeric)))
-    ##do I even need the mock?
     library(ggplot2)
     pd <- position_dodge(0.1) # move them .05 to the left and right
     library(dplyr)
@@ -32,12 +30,6 @@ for (prot in rownames(quant_dat)) {
   simple_frame$TIME <- 24
      simple_frame$TIME[ simple_frame$type == "48h"] <- 48
    
-#    ggplot(simple_frame, aes(x = TIME, y = mean, color = type)) + 
-#    geom_errorbar(aes(ymin=mean-sd, ymax=mean+sd), width=.1, position=pd) +
-#    geom_line(position=pd) +
-#    geom_point(position=pd)
-
-    ##it's only two time points, so better yet.
     plot_frame_cut <- plot_frame[plot_frame$type != "MOCK",]
     curr_plot <- ggplot(plot_frame_cut, aes(x = type, y = LFQ, color = type)) + geom_boxplot() + geom_jitter() + theme_classic() + xlab("") + ylab("log2 LFQ") + ggtitle(tail(unlist(strsplit(prot, "|", fixed = T)),1))
     plot_set[[prot]] <- curr_plot

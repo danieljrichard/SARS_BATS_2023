@@ -50,7 +50,6 @@ grand_EXP_frame <- grand_EXP_frame[grand_EXP_frame$GO_TERM %in% of_interest,]
 		test_ALIGN <- test_ALIGN +  scale_fill_npg()
 	}
         #test_ALIGN <- test_ALIGN + theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank())
-	##this actually squashes things...
 	test_ALIGN <- test_ALIGN + scale_x_discrete(position = "top") ##counterintuitive, but we flipped!
 	
 	##gridextra.

@@ -1,17 +1,14 @@
 ####################
 ##Processing EGGNOG OUTPUT.
 ##
-##Get a list of squashed genes, where each gene has multiple GO annotations.
-##Output this to a file, then write another function that takes these gene-go mappings
-##and counts the number of genes falling within each unique GO annotation.
 
 eggnog <- "query_seqs.fa.emapper.annotations"
 CDS_file <- "GCF_000308155.1_EptFus1.0_cds_from_genomic.fna"
 
-##And for background purposes we only want to consider genes actually captured in our RNA-seq data.
 transcript_file <- "bat_sars_infection_trimgalore_pass2_STAR_RAW_counts_matrix_genenames.csv"
 
 outfix <- "BAT_EGGNOG"
+
 
 eggnog <- "query_seqs.fa.emapper.annotations"
 CDS_file <- "Homo_sapiens.GRCh37.cds.all.fa"
@@ -116,9 +113,11 @@ collapse_gene_GO_annotations <- function(eggnog, CDS_file, transcript_file, outf
 	informative_SUPER_GENE$GO <- as.character(informative_SUPER_GENE$GO)
 	
 	fwrite(informative_SUPER_GENE, paste0(outfix, ".TRANSCRIPT_ALIGNED_USEFUL.output"), sep = "\t", row.names = F, quote = F)
-	gene_lines <- paste0(informative_SUPER_GENE$gene, "\t", informative_SUPER_GENE$GO)
-	writeLines(gene_lines, paste0(outfix, "_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"))
 	
+	gene_lines <- paste0(informative_SUPER_GENE$gene, "\t", informative_SUPER_GENE$GO)
+#	gene_lines <- gsub(",", "\t", gene_lines)
+	writeLines(gene_lines, paste0(outfix, "_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"))
+		
 	if(length(which(duplicated(informative_SUPER_GENE$gene))) != 0) {
 		print("oh snappo")
 		browser()
@@ -130,11 +129,11 @@ collapse_gene_GO_annotations <- function(eggnog, CDS_file, transcript_file, outf
 	hist(GO_freq_table, breaks = 200)
 	dev.off()
 	
+	##let's just...write this to file?
 	GO_freq_out <- data.frame(GO_TERM = names(GO_freq_table), gene_counts = as.numeric(GO_freq_table))
 	fwrite(GO_freq_out, paste0(outfix, "_TRANSCRIPT_ALIGNED_GO_TERM_FREQUENCY_BACKGROUNDS.tsv"), sep = "\t", row.names = F, quote = F)
-}
+	}
 
-##########
 ##########
 
 global_map <- "BAT_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
@@ -166,7 +165,7 @@ human_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/HUMAN/HUMAN_EGGNOG_TRANSCRI
 
 human_wrapper <- function() {
 	human_files <- readLines("HUMAN_sig_hits.txt")
-	try(dir.create("HUMAN_BP_ENRICHMENTS_SLIM"))
+	try(dir.create("HUMAN_BP_ENRICHMENTS_SLIM_STRINGENT"))
 	for (file in human_files) {
 		end <- unlist(strsplit(file, "/"))[length(unlist(strsplit(file, "/")))]
 		prefix <- unlist(strsplit(end, "_NORMALIZED"))[1]
@@ -174,21 +173,29 @@ human_wrapper <- function() {
 		curr_sig <- curr_dat[curr_dat$padj < 0.05,] ##just in case.
 		try(unlink(paste0("/thing/temp_UPREG_HUMAN_", prefix)))
 		try(unlink(paste0("/thing/temp_DOWNREG_HUMAN_", prefix)))
-		writeLines(curr_sig$gene[curr_sig$log2FoldChange > 0], paste0("/thing/temp_UPREG_HUMAN_", prefix))
-		writeLines(curr_sig$gene[curr_sig$log2FoldChange < 0], paste0("/thing/temp_DOWNREG_HUMAN_", prefix))
+		writeLines(curr_sig$gene[curr_sig$log2FoldChange > 1], paste0("/thing/temp_UPREG_HUMAN_", prefix))
+		writeLines(curr_sig$gene[curr_sig$log2FoldChange < -1], paste0("/thing/temp_DOWNREG_HUMAN_", prefix))
 		
 		cutoff <- 0.05
 		
-		if(file.exists(paste0("HUMAN_BP_ENRICHMENTS_SLIM/", prefix, "_UPREG", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
+		if(file.exists(paste0("HUMAN_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_UPREG_LOGFC1", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
 			print("skip")
 		}else{
-		test_GO_with_TOPGO(paste0("/thing/temp_UPREG_HUMAN_", prefix), human_map, paste0("HUMAN_BP_ENRICHMENTS_SLIM/", prefix, "_UPREG"), 0.05)
+            if(length(curr_sig$gene[curr_sig$log2FoldChange > 1]) < 5) {
+                print("not doing")
+                next()
+            }
+		test_GO_with_TOPGO(paste0("/thing/temp_UPREG_HUMAN_", prefix), human_map, paste0("HUMAN_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_UPREG_LOGFC1"), 0.05)
 		}
 		print(paste0(prefix, "_UPREG"))
-		if(file.exists(paste0("HUMAN_BP_ENRICHMENTS_SLIM/", prefix, "_DOWNREG", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
+		if(file.exists(paste0("HUMAN_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_DOWNREG_LOGFC1", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
 			print("skip")
 		}else{
-			test_GO_with_TOPGO(paste0("/thing/temp_DOWNREG_HUMAN_", prefix), human_map, paste0("HUMAN_BP_ENRICHMENTS_SLIM/", prefix, "_DOWNREG"), 0.05)
+            if(length(curr_sig$gene[curr_sig$log2FoldChange < -1]) < 5) {
+                print("not doing")
+                next()
+            }
+			test_GO_with_TOPGO(paste0("/thing/temp_DOWNREG_HUMAN_", prefix), human_map, paste0("HUMAN_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_DOWNREG_LOGFC1"), 0.05)
 		}
 		print(paste0(prefix, "_DOWNREG"))
 		
@@ -218,7 +225,8 @@ bat_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/BAT/BAT_EGGNOG_TRANSCRIPT_ALI
 
 bat_wrapper <- function() {
 	bat_files <- readLines("BAT_sig_hits.txt")
-	try(dir.create("BAT_BP_ENRICHMENTS_SLIM"))
+    bat_files <- bat_files[!grepl("EF_LU", bat_files)]
+	try(dir.create("BAT_BP_ENRICHMENTS_SLIM_STRINGENT"))
 	for (file in bat_files) {
 		end <- unlist(strsplit(file, "/"))[length(unlist(strsplit(file, "/")))]
 		prefix <- unlist(strsplit(end, "_NORMALIZED"))[1]
@@ -226,19 +234,28 @@ bat_wrapper <- function() {
 		curr_sig <- curr_dat[curr_dat$padj < 0.05,] ##just in case.
 		try(unlink(paste0("/thing/temp_UPREG_BAT_", prefix)))
 		try(unlink(paste0("/thing/temp_DOWNREG_BAT_", prefix)))
-		writeLines(curr_sig$gene[curr_sig$log2FoldChange > 0], paste0("/thing/temp_UPREG_BAT_", prefix))
-		writeLines(curr_sig$gene[curr_sig$log2FoldChange < 0], paste0("/thing/temp_DOWNREG_BAT_", prefix))
-		if(file.exists(paste0("BAT_BP_ENRICHMENTS_SLIM/", prefix, "_UPREG", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
+		writeLines(curr_sig$gene[curr_sig$log2FoldChange > 1], paste0("/thing/temp_UPREG_BAT_", prefix))
+		writeLines(curr_sig$gene[curr_sig$log2FoldChange < -1], paste0("/thing/temp_DOWNREG_BAT_", prefix))
+   		cutoff <- 0.05
+		if(file.exists(paste0("BAT_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_UPREG_LOGFC1", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
 			print("skip")
 		}else{
-		test_GO_with_TOPGO(paste0("/thing/temp_UPREG_BAT_", prefix), bat_map, paste0("BAT_BP_ENRICHMENTS_SLIM/", prefix, "_UPREG"), 0.05)
+            if(length(curr_sig$gene[curr_sig$log2FoldChange > 1]) < 5) {
+                print("not doing")
+                next()
+            }
+		test_GO_with_TOPGO(paste0("/thing/temp_UPREG_BAT_", prefix), bat_map, paste0("BAT_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_UPREG_LOGFC1"), 0.05)
 		}
 		
 		print(paste0(prefix, "_UPREG"))
-		if(file.exists(paste0("BAT_BP_ENRICHMENTS_SLIM/", prefix, "_DOWNREG", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
+		if(file.exists(paste0("BAT_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_DOWNREG_LOGFC1", "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"))) {
 			print("skip")
 		}else{
-		test_GO_with_TOPGO(paste0("/thing/temp_DOWNREG_BAT_", prefix), bat_map, paste0("BAT_BP_ENRICHMENTS_SLIM/", prefix, "_DOWNREG"), 0.05)
+            if(length(curr_sig$gene[curr_sig$log2FoldChange < -1]) < 5) {
+                print("not doing")
+                next()
+            }
+		test_GO_with_TOPGO(paste0("/thing/temp_DOWNREG_BAT_", prefix), bat_map, paste0("BAT_BP_ENRICHMENTS_SLIM_STRINGENT/", prefix, "_DOWNREG_LOGFC1"), 0.05)
 		}
 		print(paste0(prefix, "_DOWNREG"))
 		
@@ -258,11 +275,17 @@ test_GO_with_TOPGO <- function(targets, global_map, outfix, cutoff = 0.05) {
 	
 	geneList <- factor(as.integer(all_gene_background %in% target_genes))
 	names(geneList) <- all_gene_background
-	
-	##^^ http://avrilomics.blogspot.com/2015/07/using-topgo-to-test-for-go-term.html
-	
+		
 	myGOdata <- new("topGOdata", description = 'thing', ontology = "BP", allGenes = geneList,
 		annot = annFUN.gene2GO, gene2GO = geneID2GO)
+	##optional 'nodeSize' to prune small GO terms?
+	
+	#resultFisher <- runTest(myGOData, algorithm = "classic", statistic = "fisher")
+	
+	##weighing hierarchy:
+	#resultFisher_weight <- runTest(myGOData, algorithm = "weight01", statistic = "fisher")
+	
+	##....
 	resultClassic <- runTest(myGOdata, algorithm="classic", statistic="fisher")
 resultElim <- runTest(myGOdata, algorithm="elim", statistic="fisher")
 resultTopgo <- runTest(myGOdata, algorithm="weight01", statistic="fisher")
@@ -280,8 +303,16 @@ BIG_allRes$PADJ <- p.adjust(BIG_allRes$topgoFisher, method = "BH")
 write.csv(BIG_allRes, paste0(outfix, "_TOPGO_enrichments_FDR_APPLIED", ".csv"), row.names = F)
 write.csv(BIG_allRes[BIG_allRes$PADJ < 0.05,], paste0(outfix, "_TOPGO_enrichments_FDR", cutoff, "_SLICED.csv"), row.names = F)
 
+#output_file2 <- paste0(outfix, "_TOPGO_FDR", cutoff)
+#printGraph(myGOdata, resultTopgo, firstSigNodes = length(which(BIG_allRes$PADJ < cutoff)), fn.prefix = output_file2, useInfo = "all", pdfSW = TRUE)
+
+#output_file2 <- paste0(outfix, "_TOPGO_SLICED5")
+#printGraph(myGOdata, resultTopgo, firstSigNodes = 10, fn.prefix = output_file2, useInfo = "all", pdfSW = TRUE)
+
 ##additional output?
 term_matches <- list()
+
+####
 
 if(length(which(BIG_allRes$PADJ < cutoff)) == 0) {
 	print("nothing doing")
@@ -289,6 +320,7 @@ if(length(which(BIG_allRes$PADJ < cutoff)) == 0) {
 }else {
 	print("grab enriches")
 
+#myterms <- allRes$GO.ID
 myterms <- BIG_allRes$GO.ID[BIG_allRes$PADJ < cutoff]
 mygenes <- genesInTerm(myGOdata, myterms)
 for (i in 1:length(myterms))
@@ -314,6 +346,7 @@ library(scales)
 ggdata <- BIG_allRes[BIG_allRes$PADJ < 0.05,]
 ggdata <- ggdata[!duplicated(ggdata$Term),]
 ggdata <- ggdata[1:min(c(dim(ggdata)[1], 20)),]
+ggdata <- ggdata[!is.na(ggdata[,1]),]
 
 ggdata$Term <- factor(ggdata$Term, levels = rev(ggdata$Term)) # fixes order
 gg1 <- ggplot(ggdata,
@@ -376,7 +409,6 @@ global_map <- "HUMAN_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
 outfix <- "HUMAN_CALU3_24H_UPREG_EXTERNAL_VAL"
 cutoff = 0.05
 
-
 test_GO_with_TOPGO_ANNOTATION_DATABASE <- function(targets, global_map, outfix, cutoff = 0.05) {
 	
 	all_gene_background <- system(paste0("cut -f1 ", global_map), intern=T)
@@ -408,12 +440,18 @@ numsignif <- as.integer(mysummary[[3]]) # how many terms is it true that P <= 0.
 allRes <- GenTable(myGOdata, classicFisher = resultClassic, elimFisher = resultElim, topgoFisher = resultTopgo, parentchildFisher = resultParentchild, orderBy = "topgoFisher", ranksOf = "classicFisher", topNodes = numsignif)
 write.csv(allRes, paste0(outfix, "_TOPGO_enrichments_UNADJUSTED", cutoff, ".csv"), row.names = F)
 
-##padjustments
+##padjustments though..
 allGO = usedGO(object = myGOdata) 
 BIG_allRes <- GenTable(myGOdata, classicFisher = resultClassic, elimFisher = resultElim, topgoFisher = resultTopgo, parentchildFisher = resultParentchild, orderBy = "topgoFisher", ranksOf = "classicFisher", topNodes = length(allGO))
 BIG_allRes$PADJ <- p.adjust(BIG_allRes$topgoFisher, method = "BH")
 write.csv(BIG_allRes, paste0(outfix, "_TOPGO_enrichments_FDR_APPLIED", ".csv"), row.names = F)
 write.csv(BIG_allRes[BIG_allRes$PADJ < 0.05,], paste0(outfix, "_TOPGO_enrichments_FDR", cutoff, "_SLICED.csv"), row.names = F)
+
+#output_file2 <- paste0(outfix, "_TOPGO_FDR", cutoff)
+#printGraph(myGOdata, resultTopgo, firstSigNodes = length(which(BIG_allRes$PADJ < cutoff)), fn.prefix = output_file2, useInfo = "all", pdfSW = TRUE)
+
+#output_file2 <- paste0(outfix, "_TOPGO_SLICED5")
+#printGraph(myGOdata, resultTopgo, firstSigNodes = 10, fn.prefix = output_file2, useInfo = "all", pdfSW = TRUE)
 
 ##additional output?
 term_matches <- list()
@@ -433,13 +471,14 @@ for (i in 1:length(myterms))
    myfactor <- mygenesforterm %in% target_genes # find the genes that are in the list of genes of interest
    mygenesforterm2 <- mygenesforterm[myfactor == TRUE]
    mygenesforterm2 <- paste(mygenesforterm2, collapse='@')
+   #print(paste("Term",myterm,"genes:",mygenesforterm2))
 	term_matches[[myterm]] <- mygenesforterm2
 	print(myterm)
 }
 out_frame <- data.frame(term = names(term_matches), terms = unlist(term_matches))
 write.csv(out_frame, paste0(outfix, "_enriched_TOPGO_FDR", cutoff, ".csv"), row.names = F)
 
-fancy_plot <- function() {
+fancy_graph <- function() {
 		
 	require(ggplot2)
 library(scales)
@@ -492,10 +531,10 @@ gg1 <- ggplot(ggdata,
 	pdf(paste0(outfix, "_TOPGO_FDR", cutoff, ".pdf"), width = 16, height = 12)
 	print(gg1)
 	dev.off()
-
+	
 }
 
-fancy_plot()
+fancy_graph()
 
 }
 

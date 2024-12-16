@@ -1,7 +1,6 @@
 ##############
 ##Comparing human and bat genes
 ##but instead of boxplots, it was requested for VOLCANOES
-##so let's just...see about this.
 ##August 21st 2023
 ##
 ###############
@@ -28,10 +27,6 @@ bat_data <- lapply(bat_files, read.csv)
 
 human_files <- readLines("human_humandef.txt")
 human_dat <- lapply(human_files, read.csv)
-
-##Now I'm fairly confident I can come up with scaled expression values in a lovely heatmap format.
-##but I need to first define the genes I'm going to use.
-##Someone suggested all proteases, but what about significant genes coming from both species?
 
 human_sigs <- list()
 for (x in 1:length(human_dat)) {
@@ -116,8 +111,6 @@ setwd("VOLCANOES")
 lapply(1:length(human_dat), function(x) gen_volcano(human_dat[[x]], gsub("_TIME_", "-", human_names[x]), T))
 lapply(1:length(bat_data), function(x) gen_volcano(bat_data[[x]], gsub("_TIME_", "-", bat_names[x]), F))
 
-###April 12th 2024
-##requested manually add ZBP1 for Efk3B-hACE2
 dat <- bat_data[[1]]
 outfix <- "EFK3B-12"
 
@@ -151,10 +144,6 @@ gen_volcano <- function(dat, outfix, human = F) {
 	colCustom[which(curr_results$padj > 0.05)] <- "grey"
 
   curr_results$colour <- colCustom
-
-	###
-	##Update April 20th 2021
-	##there's some crazy outliers, so..
 
   orig_results <- curr_results
 
@@ -192,8 +181,6 @@ curr_lab  <- paste0("Number of Highly Up-regulated DEGs: ", length(which(sig_res
 	dev.off()
 	##############
 
-  ##was requested output.
-  ##going to assume only significant results are needed.
   orig_results <- orig_results[orig_results$padj < 0.05,]
   orig_results <- orig_results[rev(order(orig_results$starred)),]
   write.csv(orig_results, paste0(outfix, "_differential_expression_VOLCANO_results.csv"), row.names = F)

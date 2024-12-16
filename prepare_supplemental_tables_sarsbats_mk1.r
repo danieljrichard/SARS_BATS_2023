@@ -76,6 +76,7 @@ res <- system("ls *SLICED.csv", intern = T)
 bat_names <- unlist(lapply(res, function(x) unlist(strsplit(x, "/"))[length(unlist(strsplit(x, "/")))]))
 bat_names <- gsub("_TOPGO_enrichments_FDR0.05_SLICED.csv", "", bat_names)
 bat_names <- gsub("BAT_SARS_infection_", "", bat_names)
+bat_names <- gsub("_LOGFC1", "", bat_names)
 
 bat_data <- lapply(res, read.csv)
 global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/BAT/BAT_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
@@ -84,7 +85,6 @@ global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/BAT/BAT_EGGNOG_TRANSCRIPT_
 ##being careful to watch directionality.
 library(data.table)
 global_dat <- as.data.frame(fread(global_map, header = F))
-###looks like every gene with every possible GO term. Cool.
 
 bat_output <- list()
 
@@ -120,9 +120,11 @@ for (x in 1:length(bat_data)) {
 }
 
 saveRDS(bat_output, "SUPP_TABLE_2_BAT_GO_res.rds")
+saveRDS(bat_output, "SUPP_TABLE_2_BAT_GO_res_stringent.rds")
 
 library(writexl)
 write_xlsx(bat_output, "SUPP_TABLE_2_BAT_GO_res.xlsx")
+write_xlsx(bat_output, "SUPP_TABLE_2_BAT_GO_res_stringent.xlsx")
 
 
 all_res <- readRDS("/extra/SARS_BATS/ALL_DEG_res_April2024.rds")
@@ -134,6 +136,7 @@ res <- system("ls *SLICED.csv", intern = T)
 human_names <- unlist(lapply(res, function(x) unlist(strsplit(x, "/"))[length(unlist(strsplit(x, "/")))]))
 human_names <- gsub("_TOPGO_enrichments_FDR0.05_SLICED.csv", "", human_names)
 human_names <- gsub("human_sars_infection_", "", human_names)
+human_names <- gsub("_LOGFC1", "", human_names)
 
 global_map <- "/extra/SARS_BATS/CUSTOM_GO_ENRICHMENTS/HUMAN/HUMAN_EGGNOG_TRANSCRIPT_ALIGNED_TOPGO_INPUT.output"
 
@@ -143,7 +146,6 @@ bat_data <- lapply(res, read.csv)
 ##being careful to watch directionality.
 library(data.table)
 global_dat <- as.data.frame(fread(global_map, header = F))
-###looks like every gene with every possible GO term. Cool.
 
 bat_output <- list()
 
@@ -180,9 +182,11 @@ for (x in 1:length(bat_data)) {
 }
 
 saveRDS(bat_output, "SUPP_TABLE_2_HUMAN_GO_res.rds")
+saveRDS(bat_output, "SUPP_TABLE_2_HUMAN_GO_res_stringent.rds")
 
 library(writexl)
 write_xlsx(bat_output, "SUPP_TABLE_2_HUMAN_GO_res.xlsx")
+write_xlsx(bat_output, "SUPP_TABLE_2_HUMAN_GO_res_stringent.xlsx")
 
 ####
 

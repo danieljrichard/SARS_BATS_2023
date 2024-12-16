@@ -4,12 +4,11 @@
 ##
 
 ##I'm going to do this three ways.
-##First, a 'global' transcriptional response as indicated in the tenOever paper Kushal sent over
+##First, a 'global' transcriptional response
 ##
 ##then separate PCAs with different GO terms loaded.
 ##GO.db should be appropriate for this?
 
-##and I think also we're going to put in both species, nyeah?
 
 bat_files <- readLines("bat_humandef.txt")
 #find . -name "*definitions.csv" | grep -v "PROTEOMICS" > bat_humandef.txt
@@ -117,7 +116,6 @@ death <- c("GO:0008219")
 
 ##Leukocyte activation
 #GO:0045431
-##they got it wrong
 activate <- c("GO:0045321")
 
 ##manually found this out-dated term
@@ -140,7 +138,6 @@ response <- gen_sub_matrix(response_terms, huge_matrix2, "Immune Response")
 
 ####
 ##Update October 4th 2023
-##turns out I didn't need to do all that grepping....just searched msigdb a bit more deeply...whoops.
 chemokine_one <- c("ADIPOQ","AIMP1","ALKAL1","ALKAL2","AREG","BMP1","BMP10","BMP15","BMP2","BMP3","BMP4","BMP5","BMP6","BMP7","BMP8A","BMP8B","C17orf99","C1QTNF4","C5","CCL1","CCL11","CCL13","CCL14","CCL15","CCL16","CCL17","CCL18","CCL19","CCL2","CCL20","CCL21","CCL22","CCL23","CCL24","CCL25","CCL26","CCL27","CCL28","CCL3","CCL3L1","CCL3L3","CCL4","CCL5","CCL7","CCL8","CD40LG","CD70","CER1","CKLF","CLCF1","CMTM1","CMTM2","CMTM3","CMTM5","CMTM7","CMTM8","CNTF","CRLF1","CSF1","CSF2","CSF3","CX3CL1","CXCL1","CXCL10","CXCL11","CXCL12","CXCL13","CXCL14","CXCL16","CXCL2","CXCL3","CXCL5","CXCL6","CXCL8","CXCL9","EBI3","EDN1","EPO","FAM3B","FAM3C","FAM3D","FASLG","FGF2","FLT3LG","GDF1","GDF10","GDF11","GDF15","GDF2","GDF3","GDF5","GDF6","GDF7","GDF9","GPI","GPR15LG","GREM1","GREM2","GRN","HMGB1","IFNA1","IFNA10","IFNA13","IFNA14","IFNA16","IFNA17","IFNA2","IFNA21","IFNA4","IFNA5","IFNA6","IFNA7","IFNA8","IFNB1","IFNE","IFNG","IFNK","IFNL1","IFNL2","IFNL3","IFNL4","IFNW1","IL10","IL11","IL12A","IL12B","IL13","IL15","IL16","IL17A","IL17B","IL17C","IL17D","IL17F","IL18","IL19","IL1A","IL1B","IL1F10","IL1RN","IL2","IL20","IL21","IL22","IL23A","IL24","IL25","IL26","IL27","IL3","IL31","IL32","IL33","IL34","IL36A","IL36B","IL36G","IL36RN","IL37","IL4","IL5","IL6","IL7","INHA","INHBA","INHBB","INHBC","INHBE","KITLG","LEFTY1","LEFTY2","LIF","LTA","LTB","MIF","MSMP","MSTN","NAMPT","NDP","NODAL","NRG1","OSM","PF4","PF4V1","PPBP","SCG2","SCGB3A1","SECTM1","SLURP1","SPP1","TAFA5","TGFB1","TGFB2","TGFB3","THNSL2","THPO","TIMP1","TNF","TNFRSF11B","TNFSF10","TNFSF11","TNFSF12","TNFSF13","TNFSF13B","TNFSF14","TNFSF15","TNFSF18","TNFSF4","TNFSF8","TNFSF9","TSLP","VEGFA","VSTM1","WNT1","WNT10A","WNT10B","WNT11","WNT16","WNT2","WNT2B","WNT3","WNT3A","WNT4","WNT5A","WNT5B","WNT6","WNT7A","WNT7B","WNT8A","WNT8B","WNT9A","WNT9B","XCL1","XCL2")
 chemokine_two <- c("C5","CCL1","CCL11","CCL13","CCL14","CCL15","CCL16","CCL17","CCL18","CCL19","CCL2","CCL20","CCL21","CCL22","CCL23","CCL24","CCL25","CCL26","CCL27","CCL28","CCL3","CCL3L1","CCL3L3","CCL4","CCL5","CCL7","CCL8","CKLF","CX3CL1","CXCL1","CXCL10","CXCL11","CXCL12","CXCL13","CXCL14","CXCL16","CXCL2","CXCL3","CXCL5","CXCL6","CXCL8","CXCL9","GPR15LG","PF4","PF4V1","PPBP","XCL1","XCL2")
 
@@ -170,7 +167,6 @@ gen_sub_matrix <- function(goterms, huge_matrix2, label, dogrep= NULL, manual = 
     if(!is.null(manual)) {
         curr_geneset <- data.frame(gene_symbol = manual)
     }
-    ##whatever. I'll just take it and call it a day.
     cut_matrix <- huge_matrix[rownames(huge_matrix) %in% curr_geneset$gene_symbol,]
     sub_pca <- SPC(t(cut_matrix), K = 2)
 
@@ -184,7 +180,6 @@ plotframe$time <- factor(unlist(lapply(plotframe$sample, function(x) unlist(strs
 
 library(ggplot2)
 curr_thing <- ggplot(plotframe, aes(x = x, y = y, fill = cell, color = cell, shape = time, label = sample)) + geom_point(size = 6) ##shape by species maybe? Or time-point.
-##regardless, calu 12H really behaves fundamentally different to everything else.
 
 curr_thing <- curr_thing + geom_text() + theme_classic() + xlab(paste0("SPC1 (", round(sub_pca$prop.var.explained[2]*100, 2), "%)")) + ylab(paste0("SPC2 (", round(sub_pca$prop.var.explained[1]*100, 2), "%)"))
 
